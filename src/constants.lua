@@ -53,6 +53,16 @@ PLAYER_WALK_SPEED = 60
 -- player jumping velocity
 PLAYER_JUMP_VELOCITY = -150
 
+-- score bonus for completing a level
+-- multipled by the level completed
+SCORING_BONUS_LEVEL = 100
+
+-- Score for extra life award
+SCORE_FOR_EXTRA_LIFE = 1000
+
+-- invincibility duration in seconds
+INVINCIBILITYDUURATION = 15
+
 -- snail movement speed
 SNAIL_MOVE_SPEED = 10
 
@@ -107,5 +117,10 @@ FLAGPOLES = {
 FLAGS = {
     -- only take first two columns of flag as last column flags are too wavy
     7, 8, 16, 17, 25, 26,  34, 35
+}
+
+HEARTS = {
+    -- 5 is full heart for player life, 6 is star for invincibility
+    5, 6
 }
 

@@ -22,6 +22,7 @@ function GameObject:init(def)
     self.onConsume = def.onConsume
     self.hit = def.hit
     self.orientation = def.orientation
+    self.type = def.type
 end
 
 function GameObject:collides(target)
@@ -34,5 +35,10 @@ function GameObject:update(dt)
 end
 
 function GameObject:render()
-    love.graphics.draw(gTextures[self.texture], gFrames[self.texture][self.frame], self.x, self.y,self.orientation)
+   if self.type == "heart" then
+        -- resize for better rendering
+        love.graphics.draw(gTextures[self.texture], gFrames[self.texture][self.frame], self.x, self.y,self.orientation, 0.8, 0.8)
+    else
+        love.graphics.draw(gTextures[self.texture], gFrames[self.texture][self.frame], self.x, self.y,self.orientation)
+    end
 end

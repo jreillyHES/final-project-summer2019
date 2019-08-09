@@ -19,9 +19,13 @@ function StartState:update(dt)
     if love.keyboard.wasPressed('enter') or love.keyboard.wasPressed('return') then
        gStateMachine:change('play', {
           --  start new game with player score at 0
-          -- and level width at 50 
+          -- level width at 50, game level at 1
+          -- 3 player lives and not used score bonus        
           score = 0,
-          width = 50
+          width = 50,
+          gameLevel = 1,
+          lives = 3,
+          usedScoreBonus = false
        })
     end
 end

@@ -14,16 +14,59 @@ function Player:init(def)
     Entity.init(self, def)
     self.score = 0
     self.keyObtained = false
+    self.lockBlockX = 0
+    self.LockBlockY = 0
+    -- initialize values
     self.goal = "Obtain the Key!"
-    self.newWidth = 0
+    self.gameLevel = 1
+    self.lives = 3
+    self.usedScoreBonus = false
+    self.message = ""
+    
+    -- flags for flashing the player has invincibility
+    self.invincibility = false
+    self.invincibilityTimer = 0
+
+    -- timer for turning transparency on and off, flashing
+    self.flashTimer = 0
+    
 end
 
 function Player:update(dt)
     Entity.update(self, dt)
+    -- if have not use the scoring bonus and score has reached or exceeded scoring bonus
+    -- add another player life and set used scoring bonus to true
+    if not self.usedScoreBonus and self.score >= SCORE_FOR_EXTRA_LIFE then
+        gSounds['pickup']:play()
+        self.lives = self.lives + 1
+        self.usedScoreBonus = true
+        self.message = "Extra Life Granted!"
+    end
+    -- if play has invincibility awarded
+    -- player flashing controlled by flash timer when rendering
+    --  set message to invincibility has ended
+    if self.invincibility then
+        self.flashTimer = self.flashTimer + dt
+        self.invincibilityTimer = self.invincibilityTimer + dt
+
+        if self.invincibilityTimer > INVINCIBILITYDUURATION then
+            self.invincibility = false
+            self.invincibilityTimer = 0
+            self.flashTimer = 0
+            self.message = "Invincibility Has Ended!"
+        end
+    end
+    
 end
 
 function Player:render()
+    if self.invincibility and self.flashTimer > 0.06 then
+        -- flash for invincibility
+        self.flashTimer = 0
+        love.graphics.setColor(255, 255, 255, 64)
+    end
     Entity.render(self)
+    love.graphics.setColor(255, 255, 255, 255)
 end
 
 function Player:checkLeftCollisions(dt)

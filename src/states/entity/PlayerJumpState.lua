@@ -59,7 +59,7 @@ function PlayerJumpState:update(dt)
     for k, object in pairs(self.player.level.objects) do
         if object:collides(self.player) then
             if object.solid then
-                object.onCollide(object)
+                object.onCollide(object,self.player)
 
                 self.player.y = object.y + object.height
                 self.player.dy = 0
@@ -74,8 +74,17 @@ function PlayerJumpState:update(dt)
     -- check if we've collided with any entities and die if so
     for k, entity in pairs(self.player.level.entities) do
         if entity:collides(self.player) then
-            gSounds['death']:play()
-            gStateMachine:change('start')
+            if self.player.invincibility then
+                -- if player has invincibility
+                -- entity dies instead on collision
+                gSounds['kill']:play()
+                gSounds['kill2']:play()
+                self.player.score = self.player.score + 100
+                table.remove(self.player.level.entities, k)
+            else    
+                self.player:changeState('death')
+                break
+            end    
         end
     end
 end

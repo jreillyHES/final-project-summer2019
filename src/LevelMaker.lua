@@ -15,7 +15,7 @@ function LevelMaker.generate(width, height,generateKey)
     local tiles = {}
     local entities = {}
     local objects = {}
-
+    
     local tileID = TILE_ID_GROUND
     
     -- whether we should draw our tiles with toppers
@@ -86,7 +86,8 @@ function LevelMaker.generate(width, height,generateKey)
                             
                             -- select random frame from bush_ids whitelist, then random row for variance
                             frame = BUSH_IDS[math.random(#BUSH_IDS)] + (math.random(4) - 1) * 7,
-                            collidable = false
+                            collidable = false,
+                            type = "bushes"
                         }
                     )
                 end
@@ -109,7 +110,8 @@ function LevelMaker.generate(width, height,generateKey)
                         width = 16,
                         height = 16,
                         frame = BUSH_IDS[math.random(#BUSH_IDS)] + (math.random(4) - 1) * 7,
-                        collidable = false
+                        collidable = false,
+                        type = "bushes"
                     }
                 )
             end
@@ -134,44 +136,149 @@ function LevelMaker.generate(width, height,generateKey)
                         collidable = true,
                         hit = false,
                         solid = true,
+                        type = "jump block",
 
                         -- collision function takes itself
-                        onCollide = function(obj)
+                        onCollide = function(obj,player)
 
-                            -- spawn a gem if we haven't already hit the block
+                            -- spawn a gem or special object if we haven't already hit the block
                             if not obj.hit then
-
-                                -- chance to spawn gem, not guaranteed
-                                if math.random(5) == 1 then
-
-                                    -- maintain reference so we can set it to nil
-                                    local gem = GameObject {
-                                        texture = 'gems',
-                                        x = (x - 1) * TILE_SIZE,
-                                        y = (blockHeight - 1) * TILE_SIZE - 4,
-                                        width = 16,
-                                        height = 16,
-                                        frame = math.random(#GEMS),
-                                        collidable = true,
-                                        consumable = true,
-                                        solid = false,
-
-                                        -- gem has its own function to add to the player's score
-                                        onConsume = function(player, object)
-                                            gSounds['pickup']:play()
-                                            player.score = player.score + 100
-                                        end
-                                    }
-                                    
-                                    -- make the gem move up from the block and play a sound
-                                    Timer.tween(0.1, {
-                                        [gem] = {y = (blockHeight - 2) * TILE_SIZE}
-                                    })
-                                    gSounds['powerup-reveal']:play()
-
-                                    table.insert(objects, gem)
+                                local objectChance = 4 -- 1 in 4
+                                -- chance that object is a heart or star
+                                local specialObjectChance = 3 -- 1 in 3
+                                if player.gameLevel <= 3 then
+                                    -- for testing purposes, game levels 1,2 and 3
+                                    -- have a 100% chance of spawmn an object when hitting block
+                                    -- and object have 50% chance of being heart or star
+                                    objectChance = 1
+                                    specialObjectChance = 2
                                 end
+                                -- chance to spawn gem or special object, not guaranteed
+                                if math.random(objectChance) == 1 then
+                                    -- spawn either gem or special object (if allowed)
+                                    local specialObject = false
+                                    if math.random(specialObjectChance) == 1 then
+                                        -- spawned special object - either heart or star (if allowed)
+                                        -- equal chance tospawn either heart or star
+                                        if player.lives < 3 and math.random(2) == 1 then
+                                            -- heart only allowed if less than 3 lives left
+                                            -- make sure a heart object does not already exist on level
+                                            local heartFound = false
+                                            for i = 1, table.getn(objects) do
+                                                if objects[i].type == "heart" then
+                                                    -- heart found on level
+                                                    -- not allowed to spawn more than 1 heart
+                                                    heartFound = true
+                                                    break
+                                                end        
+                                            end     
+                                            if not heartFound then
+                                                -- spawn the heart
+                                                specialObject = true
+                                                local heart = GameObject {
+                                                    texture = 'hearts',
+                                                    x = (x - 1) * TILE_SIZE,
+                                                    y = (blockHeight - 1) * TILE_SIZE - 4,
+                                                    width = 16,
+                                                    height = 16,
+                                                    frame = 5,
+                                                    collidable = true,
+                                                    consumable = true,
+                                                    solid = false,
+                                                    type = "heart",
+                                                    -- heart has its own function to add to the player's score
+                                                    onConsume = function(player, object)
+                                                        gSounds['pickup']:play()
+                                                        player.lives = player.lives + 1
+                                                        player.message = "Extra Life Granted!"
+                                                    end
+                                                }
+                                                -- make the heart move up from the block and play a sound
+                                                Timer.tween(0.1, {
+                                                        [heart] = {y = (blockHeight - 2) * TILE_SIZE}
+                                                })
+                                                gSounds['powerup-reveal']:play()
 
+                                                table.insert(objects, heart)
+                                            end
+                                        end 
+                                        if not specialObject then
+                                            -- if we have not spawned the heart as a special object
+                                            -- make sure a star object does not already exist on level
+                                            local starFound = false
+                                            for i = 1, table.getn(objects) do
+                                                if objects[i].type == "star" then
+                                                    -- star found on level
+                                                    -- not allowed to spawn more than 1 star
+                                                    starFound = true
+                                                    break
+                                                end        
+                                            end     
+                                            if not starFound and not player.invincibility then
+                                                -- if there is not already a star on the level
+                                                -- and player is not already invincible
+                                                -- spawn the star
+                                                specialObject = true
+                                                local star = GameObject {
+                                                    texture = 'hearts',
+                                                    x = (x - 1) * TILE_SIZE,
+                                                    y = (blockHeight - 1) * TILE_SIZE - 4,
+                                                    width = 16,
+                                                    height = 16,
+                                                    frame = 6,
+                                                    collidable = true,
+                                                    consumable = true,
+                                                    solid = false,
+                                                    type = "star",
+                                                    -- star has its own function to temporarily add invincibility to player
+                                                    onConsume = function(player, object)
+                                                        gSounds['pickup']:play()
+                                                        player.invincibility = true
+                                                        player.message = "Invincibility Awarded!"
+                                                    end
+                                                }
+                                                -- make the star move up from the block and play a sound
+                                                Timer.tween(0.1, {
+                                                        [star] = {y = (blockHeight - 2) * TILE_SIZE}
+                                                })
+                                                gSounds['powerup-reveal']:play()
+                                                
+                                                table.insert(objects, star)
+                                            end
+                                        end
+                                    end
+                                    if not specialObject then
+                                        -- if we have not spawned a special object
+                                        -- spawn the gem
+                                        -- maintain reference so we can set it to nil
+                                        local gem = GameObject {
+                                            texture = 'gems',
+                                            x = (x - 1) * TILE_SIZE,
+                                            y = (blockHeight - 1) * TILE_SIZE - 4,
+                                            width = 16,
+                                            height = 16,
+                                            frame = math.random(#GEMS),
+                                            collidable = true,
+                                            consumable = true,
+                                            solid = false,
+                                            type = "gem",
+                                            -- gem has its own function to add to the player's score
+                                            onConsume = function(player, object)
+                                                gSounds['pickup']:play()
+                                                player.score = player.score + 100
+                                            end
+                                        }
+                                    
+                                        -- make the gem move up from the block and play a sound
+                                        Timer.tween(0.1, {
+                                            [gem] = {y = (blockHeight - 2) * TILE_SIZE}
+                                        })
+                                        gSounds['powerup-reveal']:play()
+
+                                        table.insert(objects, gem)
+                                    end
+                                    
+                                end
                                 obj.hit = true
                             end
 
@@ -184,7 +291,6 @@ function LevelMaker.generate(width, height,generateKey)
         end
     end
     
-
     local map = TileMap(width, height)
     map.tiles = tiles
 
@@ -206,19 +312,30 @@ function LevelMaker.generate(width, height,generateKey)
                 collidable = true,
                 consumable = true,
                 solid = false,
+                type = "key",
                 -- key has its own function to 
                 -- set goal to unlock the lock block
-                -- and draw the lock block to match the same key selection
-                -- that is at least 10 tiles into this level
-                -- and is not currently occupied by an object or a pillar
                 onConsume = function(player, object)
                     gSounds['pickup']:play()
                     player.goal = "Unlock the Lock Block!"
-                    player.newWidth = width
+                    player.keyObtained = true
+                    for i = 1, table.getn(objects) do
+                        if objects[i].type == "lock block" then
+                            -- key obtained
+                            -- set lock block to consumable
+                            objects[i].consumable = true
+                            objects[i].solid = false
+                            break
+                        end        
+                    end     
                 end
             }
         )    
-        -- generate lock block
+        -- generate a lock block in a random location 
+        -- that is at least 10 tiles into this level
+        -- and is not currently occupied by an object or a pillar
+        -- since randonly generated, lock block can be before or after
+        -- the location of the key
         emptyX, emptyY = LevelMaker.findEmptySpace(width, height,tiles,objects)                    
         table.insert(objects,
             GameObject {
@@ -228,46 +345,23 @@ function LevelMaker.generate(width, height,generateKey)
                 width = 16,
                 height = 16,
                 frame = LOCK_BLOCKS[keySelection],
-                collidable = true,
-                consumable = true,
+                -- initialize as solid and not consumable
+                -- obtain key will make lock block consumable
+                consumable = false,
+                solid = true,
+                type = "lock block",
+                onCollide = function()
+                    -- do nothing on collision when solid object
+                end,
                 -- lock block has its own function to 
                 -- set goal to capture the flag
-                -- and draw the flag and flagpole
-                -- since randonly generated, lock block can be before or after
-                -- the location of the key
+                -- and draw the flag
                 onConsume = function(player, object)
                     gSounds['pickup']:play()
                     player.goal = "Capture the Flag!"
-                    -- generate flag pole and flag
+                    -- generate flag
                     -- making sure on top of topper
                     local flagY = LevelMaker.findTopper(width, height,tiles)
-                    for y1 = 0, 2 do
-                        table.insert(objects,
-                            GameObject {
-                                texture = 'flags',
-                                x = (width - 1 ) * TILE_SIZE,
-                                y = flagY - (2 - y1) * TILE_SIZE,
-                                width = 16,
-                                height = 16,
-                                frame = FLAGPOLES[flagPoleSelection + (y1 * 6)],
-                                collidable = true,
-                                consumable = true,
-                                -- lock block has its own function to 
-                                -- set goal to capture the flag
-                                -- and draw the flag and flagpole
-                                onConsume = function(player, object)
-                                    gSounds['powerup-reveal']:play()
-                                    gStateMachine:change('play', {
-                                        -- when player touches flag post,
-                                        -- maintain player score  
-                                        -- and expand width of level by 10%    
-                                        score = player.score,
-                                        width = player.newWidth + math.floor(player.newWidth * .1)
-                                    })    
-                                end             
-                            }
-                        )
-                    end
                     table.insert(objects,
                         GameObject {
                             texture = 'flags',
@@ -278,28 +372,43 @@ function LevelMaker.generate(width, height,generateKey)
                             height = 16,
                             orientation = 3.17,
                             frame = FLAGS[math.random(#FLAGS)],
-                            collidable = true,
+                            collidable = false,
                             consumable = true,
-                            -- lock block has its own function to 
-                            -- set goal to capture the flag
-                            -- and draw the flag and flagpole
+                            type = "flag",
+                            -- flag has its own function to 
+                            -- set message to level completed
                             onConsume = function(player, object)
-                                gSounds['powerup-reveal']:play()
-                                gStateMachine:change('play', {
-                                    -- when player touches flag post,
-                                    -- maintain player score  
-                                    -- and expand width of level by 10%    
-                                    score = player.score,
-                                    width = player.newWidth + math.floor(player.newWidth * .1)
-                                })    
+                                gSounds['pickup']:play()
+                                player.goal = "Flag Captured!"
+                                player.message = "Level Completed!"
                             end             
                         }
                     )
                 end
             }
         )    
-            
-        
+        -- generate flag pole
+        -- making sure on top of topper
+        local flagY = LevelMaker.findTopper(width, height,tiles)
+        for y1 = 0, 2 do
+            table.insert(objects,
+                GameObject {
+                    texture = 'flags',
+                    x = (width - 1 ) * TILE_SIZE,
+                    y = flagY - (2 - y1) * TILE_SIZE,
+                    width = 16,
+                    height = 16,
+                    frame = FLAGPOLES[flagPoleSelection + (y1 * 6)],
+                    collidable = true,
+                    consumable = false,
+                    type = "flag pole ",
+                    onCollide = function()
+                        -- do nothing on collision 
+                        -- must capture the flag, not touch the flag pole    
+                    end
+                }
+            )
+        end
     end
     
 

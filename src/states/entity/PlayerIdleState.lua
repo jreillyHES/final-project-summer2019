@@ -31,8 +31,17 @@ function PlayerIdleState:update(dt)
     -- check if we've collided with any entities and die if so
     for k, entity in pairs(self.player.level.entities) do
         if entity:collides(self.player) then
-            gSounds['death']:play()
-            gStateMachine:change('start')
+            if self.player.invincibility then
+                -- if player has invincibility
+                -- entity dies instead on collision
+                gSounds['kill']:play()
+                gSounds['kill2']:play()
+                self.player.score = self.player.score + 100
+                table.remove(self.player.level.entities, k)
+            else    
+                self.player:changeState('death')
+                break
+            end    
         end
     end
 end

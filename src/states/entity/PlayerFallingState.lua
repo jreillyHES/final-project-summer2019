@@ -28,6 +28,23 @@ function PlayerFallingState:update(dt)
     -- look at two tiles below our feet and check for collisions
     local tileBottomLeft = self.player.map:pointToTile(self.player.x + 1, self.player.y + self.player.height)
     local tileBottomRight = self.player.map:pointToTile(self.player.x + self.player.width - 1, self.player.y + self.player.height)
+    
+    
+    if self.player.invincibility and self.player.y > 76 then
+        -- if player has invincibility and has fallen below ground level
+        -- do not allow player to fall to their death in gap
+        -- stop gravity and move player back to ground level
+        -- if facing right, move right one tile
+        -- if facing left, move left one tile
+        self.player.dy = 0
+        self.player.y = 76
+        if self.player.direction == 'right' then
+            self.player.x = self.player.x + PLAYER_WALK_SPEED * dt
+        else
+            self.player.x = self.player.x - PLAYER_WALK_SPEED * dt
+        end
+    end
+    
 
     -- if we get a collision beneath us, go into either walking or idle
     if (tileBottomLeft and tileBottomRight) and (tileBottomLeft:collidable() or tileBottomRight:collidable()) then
@@ -41,11 +58,10 @@ function PlayerFallingState:update(dt)
         end
 
         self.player.y = (tileBottomLeft.y - 1) * TILE_SIZE - self.player.height
-    
+        
     -- go back to start if we fall below the map boundary
     elseif self.player.y > VIRTUAL_HEIGHT then
-        gSounds['death']:play()
-        gStateMachine:change('start')
+        self.player:changeState('death')
     
     -- check side collisions and reset position
     elseif love.keyboard.isDown('left') then
